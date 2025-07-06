@@ -2,6 +2,8 @@ import random
 from pathlib import Path
 from typing import Optional
 
+from scripts.data_utils import ensure_countries_dataset
+
 import geopandas as gpd
 from shapely.geometry import Polygon, MultiPolygon
 
@@ -14,13 +16,16 @@ def random_point_within(poly: Polygon) -> tuple[float, float]:
             return p.x, p.y
 
 
-def random_location(shapefile: str, population_field: str = "POP_EST") -> tuple[str, float, float]:
+def random_location(
+    shapefile: Optional[str] = None, population_field: str = "POP_EST"
+) -> tuple[str, float, float]:
     """Choose a random location weighted by population.
 
     Parameters
     ----------
-    shapefile: str
-        Path to a polygon dataset (e.g. Natural Earth countries).
+    shapefile: str | None
+        Path to a polygon dataset (e.g. Natural Earth countries). If ``None``,
+        the Natural Earth countries dataset will be downloaded automatically.
     population_field: str
         Field in the dataset containing population numbers.
 
@@ -29,6 +34,8 @@ def random_location(shapefile: str, population_field: str = "POP_EST") -> tuple[
     tuple[str, float, float]
         A tuple of the chosen region name, longitude, and latitude.
     """
+    if shapefile is None:
+        shapefile = ensure_countries_dataset()
     gdf = gpd.read_file(shapefile)
     if population_field not in gdf.columns:
         raise ValueError(f"population field '{population_field}' not in dataset")
@@ -51,8 +58,17 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Sample a random location weighted by population")
-    parser.add_argument("shapefile", help="Path to shapefile or GeoPackage containing polygons")
-    parser.add_argument("population_field", nargs="?", default="POP_EST", help="Column containing population values")
+    parser.add_argument(
+        "shapefile",
+        nargs="?",
+        help="Path to shapefile or GeoPackage containing polygons (defaults to Natural Earth countries)",
+    )
+    parser.add_argument(
+        "population_field",
+        nargs="?",
+        default="POP_EST",
+        help="Column containing population values",
+    )
     args = parser.parse_args()
 
     name, lon, lat = random_location(args.shapefile, args.population_field)
